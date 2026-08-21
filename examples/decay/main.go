@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	faction "github.com/cosfaction/cosfaction"
+	faction "github.com/d1sco/cosfaction/cosfaction"
 )
 
 func main() {
@@ -33,16 +33,16 @@ func main() {
 		},
 		Tiers: []faction.Tier{
 			{Name: "Outlawed", MinValue: -1000, MaxValue: -601},
-			{Name: "Wanted", MinValue: -600,  MaxValue: -201},
-			{Name: "Suspected", MinValue: -200,  MaxValue: -1},
-			{Name: "Neutral", MinValue: 0,     MaxValue: 299},
-			{Name: "Trusted", MinValue: 300,   MaxValue: 699},
-			{Name: "Celebrated", MinValue: 700,   MaxValue: 1000},
+			{Name: "Wanted", MinValue: -600, MaxValue: -201},
+			{Name: "Suspected", MinValue: -200, MaxValue: -1},
+			{Name: "Neutral", MinValue: 0, MaxValue: 299},
+			{Name: "Trusted", MinValue: 300, MaxValue: 699},
+			{Name: "Celebrated", MinValue: 700, MaxValue: 1000},
 		},
 		Store: store,
 		Decay: faction.DecayConfig{
 			Enabled:     true,
-			RatePerHour: 20,    // 20 disposition points per real-world hour
+			RatePerHour: 20, // 20 disposition points per real-world hour
 			Target:      "neutral",
 		},
 	})
@@ -67,8 +67,8 @@ func main() {
 		hoursAgo int
 		label    string
 	}{
-		{0,  "Now (just earned)"},
-		{6,  "6 hours later"},
+		{0, "Now (just earned)"},
+		{6, "6 hours later"},
 		{12, "12 hours later"},
 		{24, "24 hours later"},
 		{36, "36 hours later"},
@@ -110,8 +110,8 @@ func main() {
 		hoursAgo int
 		label    string
 	}{
-		{0,  "Now (Wanted standing)"},
-		{6,  "6 hours later"},
+		{0, "Now (Wanted standing)"},
+		{6, "6 hours later"},
 		{12, "12 hours later"},
 		{24, "24 hours later"},
 	}

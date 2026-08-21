@@ -27,7 +27,7 @@ import (
 	"sync"
 	"time"
 
-	faction "github.com/cosfaction/cosfaction"
+	faction "github.com/d1sco/cosfaction/cosfaction"
 )
 
 func main() {
@@ -35,23 +35,23 @@ func main() {
 
 	engine, err := faction.New(faction.Config{
 		Factions: []faction.Faction{
-			{ID: "iar",   Name: "Interstellar Authority Republic", Type: faction.FactionTypeGoverning},
-			{ID: "union", Name: "The Union",                       Type: faction.FactionTypeResistance},
-			{ID: "guild", Name: "Merchant Guild",                   Type: faction.FactionTypeNeutral},
+			{ID: "iar", Name: "Interstellar Authority Republic", Type: faction.FactionTypeGoverning},
+			{ID: "union", Name: "The Union", Type: faction.FactionTypeResistance},
+			{ID: "guild", Name: "Merchant Guild", Type: faction.FactionTypeNeutral},
 		},
 		Tiers: []faction.Tier{
 			{Name: "Hostile", MinValue: -1000, MaxValue: -601},
-			{Name: "Unfriendly", MinValue: -600,  MaxValue: -201},
-			{Name: "Neutral", MinValue: -200,  MaxValue: 199},
-			{Name: "Friendly", MinValue: 200,   MaxValue: 599},
-			{Name: "Honored", MinValue: 600,   MaxValue: 1000},
+			{Name: "Unfriendly", MinValue: -600, MaxValue: -201},
+			{Name: "Neutral", MinValue: -200, MaxValue: 199},
+			{Name: "Friendly", MinValue: 200, MaxValue: 599},
+			{Name: "Honored", MinValue: 600, MaxValue: 1000},
 		},
 		Relations: []faction.Relation{
 			// IAR and Union are strongly opposed.
-			{FactionA: "iar",   FactionB: "union", Influence: -0.8},
-			{FactionA: "union", FactionB: "iar",   Influence: -0.8},
+			{FactionA: "iar", FactionB: "union", Influence: -0.8},
+			{FactionA: "union", FactionB: "iar", Influence: -0.8},
 			// IAR endorses the Merchant Guild.
-			{FactionA: "iar",   FactionB: "guild", Influence: +0.6},
+			{FactionA: "iar", FactionB: "guild", Influence: +0.6},
 			// Union distrusts the Guild because of its IAR alignment.
 			{FactionA: "union", FactionB: "guild", Influence: -0.4},
 		},

@@ -24,7 +24,7 @@ import (
 	"sync"
 	"time"
 
-	faction "github.com/cosfaction/cosfaction"
+	faction "github.com/d1sco/cosfaction/cosfaction"
 )
 
 func main() {
@@ -60,20 +60,20 @@ func main() {
 
 	engine, err := faction.New(faction.Config{
 		Factions: []faction.Faction{
-			{ID: "iar",   Name: "Interstellar Authority Republic", Type: faction.FactionTypeGoverning},
-			{ID: "union", Name: "The Union",                       Type: faction.FactionTypeResistance},
+			{ID: "iar", Name: "Interstellar Authority Republic", Type: faction.FactionTypeGoverning},
+			{ID: "union", Name: "The Union", Type: faction.FactionTypeResistance},
 		},
 		Tiers: []faction.Tier{
 			{Name: "Outlawed", MinValue: -1000, MaxValue: -601},
-			{Name: "Wanted", MinValue: -600,  MaxValue: -201},
-			{Name: "Suspected", MinValue: -200,  MaxValue: -1},
-			{Name: "Neutral", MinValue: 0,     MaxValue: 299},
-			{Name: "Trusted", MinValue: 300,   MaxValue: 699},
-			{Name: "Celebrated", MinValue: 700,   MaxValue: 1000},
+			{Name: "Wanted", MinValue: -600, MaxValue: -201},
+			{Name: "Suspected", MinValue: -200, MaxValue: -1},
+			{Name: "Neutral", MinValue: 0, MaxValue: 299},
+			{Name: "Trusted", MinValue: 300, MaxValue: 699},
+			{Name: "Celebrated", MinValue: 700, MaxValue: 1000},
 		},
 		Relations: []faction.Relation{
-			{FactionA: "iar",   FactionB: "union", Influence: -0.8},
-			{FactionA: "union", FactionB: "iar",   Influence: -0.8},
+			{FactionA: "iar", FactionB: "union", Influence: -0.8},
+			{FactionA: "union", FactionB: "iar", Influence: -0.8},
 		},
 		Store:     newMemoryStore(),
 		Publisher: pub,

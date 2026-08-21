@@ -14,7 +14,7 @@ import (
 	"log"
 	"time"
 
-	faction "github.com/cosfaction/cosfaction"
+	faction "github.com/d1sco/cosfaction/cosfaction"
 )
 
 // Faction IDs for the Clusters game world.

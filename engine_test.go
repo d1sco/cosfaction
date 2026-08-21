@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	faction "github.com/cosfaction/cosfaction"
+	faction "github.com/d1sco/cosfaction/cosfaction"
 )
 
 // ── Test fixtures ─────────────────────────────────────────────────────────────
@@ -842,8 +842,8 @@ func TestEvenTiers_ErrorOnInvalidRange(t *testing.T) {
 
 func TestWeightedTiers_ProportionalWidths(t *testing.T) {
 	tiers, err := faction.WeightedTiers(-1000, 1000, []faction.TierWeight{
-		{Name: "Hostile",  Weight: 1},
-		{Name: "Neutral",  Weight: 2}, // twice as wide
+		{Name: "Hostile", Weight: 1},
+		{Name: "Neutral", Weight: 2}, // twice as wide
 		{Name: "Friendly", Weight: 1},
 	})
 	if err != nil {
@@ -882,9 +882,9 @@ func TestWeightedTiers_ErrorOnZeroWeight(t *testing.T) {
 
 func TestWeightedTiers_Contiguous(t *testing.T) {
 	tiers, err := faction.WeightedTiers(-500, 500, []faction.TierWeight{
-		{Name: "Low",    Weight: 3},
+		{Name: "Low", Weight: 3},
 		{Name: "Middle", Weight: 5},
-		{Name: "High",   Weight: 2},
+		{Name: "High", Weight: 2},
 	})
 	if err != nil {
 		t.Fatalf("WeightedTiers failed: %v", err)
@@ -902,9 +902,9 @@ func TestNew_RejectsTiersWithGap(t *testing.T) {
 	_, err := faction.New(faction.Config{
 		Factions: []faction.Faction{{ID: "a", Name: "A"}},
 		Tiers: []faction.Tier{
-			{Name: "Low",  MinValue: -100, MaxValue: -1},
+			{Name: "Low", MinValue: -100, MaxValue: -1},
 			// Gap: 0 is uncovered
-			{Name: "High", MinValue: 1,   MaxValue: 100},
+			{Name: "High", MinValue: 1, MaxValue: 100},
 		},
 		Store: newMemStore(),
 	})
@@ -917,9 +917,9 @@ func TestNew_RejectsTiersWithOverlap(t *testing.T) {
 	_, err := faction.New(faction.Config{
 		Factions: []faction.Faction{{ID: "a", Name: "A"}},
 		Tiers: []faction.Tier{
-			{Name: "Low",  MinValue: -100, MaxValue: 10},
+			{Name: "Low", MinValue: -100, MaxValue: 10},
 			// Overlap: 0..10 covered by both
-			{Name: "High", MinValue: 0,   MaxValue: 100},
+			{Name: "High", MinValue: 0, MaxValue: 100},
 		},
 		Store: newMemStore(),
 	})
@@ -933,9 +933,9 @@ func TestNew_AcceptsTiersInAnyOrder(t *testing.T) {
 	_, err := faction.New(faction.Config{
 		Factions: []faction.Faction{{ID: "a", Name: "A"}},
 		Tiers: []faction.Tier{
-			{Name: "High",   MinValue: 1,    MaxValue: 100},
-			{Name: "Low",    MinValue: -100, MaxValue: -1},
-			{Name: "Neutral",MinValue: 0,    MaxValue: 0},
+			{Name: "High", MinValue: 1, MaxValue: 100},
+			{Name: "Low", MinValue: -100, MaxValue: -1},
+			{Name: "Neutral", MinValue: 0, MaxValue: 0},
 		},
 		Store: newMemStore(),
 	})
@@ -950,9 +950,9 @@ func TestNew_RankDerivedFromOrder(t *testing.T) {
 	engine, err := faction.New(faction.Config{
 		Factions: []faction.Faction{{ID: "a", Name: "A"}},
 		Tiers: []faction.Tier{
-			{Name: "High",   MinValue: 101,  MaxValue: 200},
-			{Name: "Low",    MinValue: -200, MaxValue: -101},
-			{Name: "Neutral",MinValue: -100, MaxValue: 100},
+			{Name: "High", MinValue: 101, MaxValue: 200},
+			{Name: "Low", MinValue: -200, MaxValue: -101},
+			{Name: "Neutral", MinValue: -100, MaxValue: 100},
 		},
 		Store: newMemStore(),
 	})
