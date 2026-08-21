@@ -371,33 +371,144 @@ type Event struct {
 
 ## Adapters
 
-Ready-made adapter implementations are available as separate sub-modules so your project only pulls in the dependencies it needs.
+Ready-made adapter implementations are available as separate sub-modules so your project only pulls in the dependencies it needs. Each adapter wraps your existing connection — cosfaction does not manage connections, credentials, or infrastructure.
 
-| Adapter | Module | Implements |
-|---------|--------|------------|
-| PostgreSQL | `github.com/cosfaction/cosfaction/adapters/postgres` | `Store` |
-| Redis | `github.com/cosfaction/cosfaction/adapters/redis` | `Cache` |
-| NATS | `github.com/cosfaction/cosfaction/adapters/nats` | `Publisher` |
+| Adapter    | Module                                              | Implements  |
+|------------|-----------------------------------------------------|-------------|
+| PostgreSQL | `github.com/d1sco/cosfaction/adapters/postgres`     | `Store`     |
+| Redis      | `github.com/d1sco/cosfaction/adapters/redis`        | `Cache`     |
+| NATS       | `github.com/d1sco/cosfaction/adapters/nats`         | `Publisher` |
 
-Each adapter accepts an already-configured connection. Connection management, credentials, and infrastructure are entirely the caller's responsibility.
+Install only what your backend already uses:
+
+```bash
+# Store — required, picks up where your existing Postgres pool is
+go get github.com/d1sco/cosfaction/adapters/postgres@v0.1.1
+
+# Cache — optional, sits in front of the store
+go get github.com/d1sco/cosfaction/adapters/redis@v0.1.1
+
+# Publisher — optional, routes events to downstream services
+go get github.com/d1sco/cosfaction/adapters/nats@v0.1.1
+```
+
+### Wiring into an existing backend
+
+The pattern is always the same: pass your existing connection into the adapter, pass the adapter into the engine. Nothing else changes in your infrastructure.
 
 ```go
-// PostgreSQL
-pool, _ := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
-postgres.Migrate(ctx, pool) // idempotent, safe to call on every startup
-store := postgres.New(pool)
+package main
 
-// Redis
-cache := redis.New(rdb, redis.Config{TTL: 24 * time.Hour})
+import (
+    "context"
+    "log"
+    "os"
+    "time"
 
-// NATS — events published to faction.events.disposition.{type}
-publisher := nats.New(nc, nats.Config{SubjectPrefix: "faction.events"})
+    faction   "github.com/d1sco/cosfaction"
+    pgadapter "github.com/d1sco/cosfaction/adapters/postgres"
+    rdadapter "github.com/d1sco/cosfaction/adapters/redis"
+    natsadapter "github.com/d1sco/cosfaction/adapters/nats"
 
-engine, err := faction.New(faction.Config{
-    Store:     store,
-    Cache:     cache,
-    Publisher: publisher,
-    // ...
+    "github.com/jackc/pgx/v5/pgxpool"
+    "github.com/nats-io/nats.go"
+    "github.com/redis/go-redis/v9"
+)
+
+func main() {
+    ctx := context.Background()
+
+    // ── PostgreSQL ────────────────────────────────────────────────
+    // Pass your existing pool — cosfaction does not open connections.
+    pool, err := pgxpool.New(ctx, os.Getenv("DATABASE_URL"))
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Migrate is idempotent — safe to call on every startup.
+    // Creates faction_dispositions and faction_disposition_history
+    // tables if they do not already exist.
+    if err := pgadapter.Migrate(ctx, pool); err != nil {
+        log.Fatal(err)
+    }
+
+    store := pgadapter.New(pool)
+
+    // ── Redis ─────────────────────────────────────────────────────
+    // Optional. Sits in front of Postgres for hot-path disposition reads.
+    rdb := redis.NewClient(&redis.Options{
+        Addr: os.Getenv("REDIS_ADDR"), // e.g. "localhost:6379"
+    })
+
+    cache := rdadapter.New(rdb, rdadapter.Config{
+        TTL:       24 * time.Hour,    // evict after 24 hours of inactivity
+        KeyPrefix: "faction:",        // namespace within your Redis instance
+    })
+
+    // ── NATS ──────────────────────────────────────────────────────
+    // Optional. Publishes disposition events to downstream services.
+    // Events land at {SubjectPrefix}.disposition.{type}
+    // e.g. game.faction.disposition.tier_crossed
+    nc, err := nats.Connect(os.Getenv("NATS_URL"))
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    publisher := natsadapter.New(nc, natsadapter.Config{
+        SubjectPrefix: "game.faction", // scopes events to your game namespace
+    })
+
+    // ── Engine ────────────────────────────────────────────────────
+    tiers, err := faction.EvenTiers(
+        -10000, // dispositionMin
+        10000,  // dispositionMax
+        "Outlawed", "Wanted", "Suspected", "Neutral", "Trusted", "Celebrated",
+    )
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    engine, err := faction.New(faction.Config{
+        Factions: []faction.Faction{
+            {ID: "iar",   Name: "Interstellar Authority Republic", Type: faction.FactionTypeGoverning},
+            {ID: "union", Name: "The Union",                       Type: faction.FactionTypeResistance},
+        },
+        Tiers:     tiers,
+        Relations: []faction.Relation{
+            {FactionA: "iar",   FactionB: "union", Influence: -0.8},
+            {FactionA: "union", FactionB: "iar",   Influence: -0.8},
+        },
+        Store:     store,     // required
+        Cache:     cache,     // optional — remove if not using Redis
+        Publisher: publisher, // optional — remove if not using NATS
+        Decay: faction.DecayConfig{
+            Enabled:     true,
+            RatePerHour: 20,
+            Target:      "neutral",
+        },
+    })
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Engine is ready. Use it anywhere in your game server.
+    _ = engine
+}
+```
+
+### Subscribing to events on your existing NATS consumer
+
+```go
+// Receive all faction events
+nc.Subscribe("game.faction.>", func(msg *nats.Msg) {
+    // msg.Data is a JSON-encoded faction.Event
+})
+
+// React only to tier crossings — the most actionable signal
+nc.Subscribe("game.faction.disposition.tier.crossed", func(msg *nats.Msg) {
+    var event faction.Event
+    json.Unmarshal(msg.Data, &event)
+    // recalculate enforcement probability, update NPC behaviour, notify player
 })
 ```
 
