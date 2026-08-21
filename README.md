@@ -1,10 +1,8 @@
-# Cosfaction
+# cosfaction
 
 Faction disposition engine for multiplayer games.
 
-`cosfaction` is the political glue between your players and your world —
-reputation that accumulates from a thousand small choices
-and shatters from a single catastrophic one. It models multi-axis faction relationships as a weighted directed graph and uses **Higher-Order Taylor Expansion** to propagate disposition changes across competing factions with mathematically guaranteed convergence.
+`cosfaction` models multi-axis faction relationships as a weighted directed graph and uses **Higher-Order Taylor Expansion** to propagate disposition changes across competing factions with mathematically guaranteed convergence.
 
 ## Why not just store a reputation integer?
 
@@ -12,7 +10,7 @@ A reputation integer tells you how much a faction likes a player.
 
 `cosfaction` tells you how a player's relationship with one faction changes every other faction's opinion of them — and by exactly how much — with the political ripple effects that real competing factions would produce.
 
-When a Smuggler (a Player Profession) defies an IAR inspector (Authority Goverment, Authority Figure), the Union (Anti-Authority) notices. When a Bounty Hunter delivers a Union operative to the IAR, the Union treats it as a betrayal. These effects emerge automatically from the faction relationship graph. No special casing. No hardcoded faction logic.
+When a Smuggler defies an IAR inspector, the Union notices. When a Bounty Hunter delivers a Union operative to the IAR, the Union treats it as a betrayal. These effects emerge automatically from the faction relationship graph. No special casing. No hardcoded faction logic.
 
 ## How it works
 
@@ -55,35 +53,124 @@ These terms have precise meanings in cosfaction that map directly to game design
 **Decay** — The gradual movement of disposition toward a target value over real time when no new deltas are applied. Decay is evaluated lazily on read rather than by a background process — the engine computes elapsed time since the last write and applies the rate at the moment of access. A player cannot freeze their standing in a favorable state by logging out.
 ## Quick start
 
+```bash
+go get github.com/d1sco/cosfaction@v0.1.1
+```
+
 ```go
-// Build tiers without calculating boundaries manually.
-// Add or remove tier names — boundaries recalculate automatically.
-tiers, err := faction.EvenTiers(
-    -1000, // dispositionMin
-    1000,  // dispositionMax
-    "Outlawed", "Wanted", "Suspected", "Neutral", "Trusted", "Celebrated",
+package main
+
+import (
+    "context"
+    "fmt"
+    "sync"
+    "time"
+
+    faction "github.com/d1sco/cosfaction"
 )
 
-engine, err := faction.New(faction.Config{
-    Factions: []faction.Faction{
-        {ID: "iar",   Name: "Interstellar Authority Republic", Type: faction.FactionTypeGoverning},
-        {ID: "union", Name: "The Union",                       Type: faction.FactionTypeResistance},
-    },
-    Tiers: tiers,
-    Relations: []faction.Relation{
-        {FactionA: "iar",   FactionB: "union", Influence: -0.8},
-        {FactionA: "union", FactionB: "iar",   Influence: -0.8},
-    },
-    Store: myPostgresStore,
-})
+func main() {
+    ctx := context.Background()
 
-result, err := engine.ApplyDelta(ctx, faction.Delta{
-    EntityID:  "smuggler-001",
-    FactionID: "union",
-    Amount:    100,
-    Reason:    "Delivered guerilla weapons to Union contact",
-    Source:    "smuggler_delivery_quest",
-})
+    // Build tiers without calculating boundaries manually.
+    // Add or remove tier names — boundaries recalculate automatically.
+    tiers, err := faction.EvenTiers(
+        -10000, // dispositionMin
+        10000,  // dispositionMax
+        "Outlawed", "Wanted", "Suspected", "Neutral", "Trusted", "Celebrated",
+    )
+    if err != nil {
+        panic(err)
+    }
+
+    engine, err := faction.New(faction.Config{
+        Factions: []faction.Faction{
+            {ID: "iar",   Name: "Interstellar Authority Republic", Type: faction.FactionTypeGoverning},
+            {ID: "union", Name: "The Union",                       Type: faction.FactionTypeResistance},
+        },
+        Tiers: tiers,
+        Relations: []faction.Relation{
+            {FactionA: "iar",   FactionB: "union", Influence: -0.8},
+            {FactionA: "union", FactionB: "iar",   Influence: -0.8},
+        },
+        Store: newMemoryStore(), // swap for adapters/postgres in production
+    })
+    if err != nil {
+        panic(err)
+    }
+
+    result, err := engine.ApplyDelta(ctx, faction.Delta{
+        EntityID:  "smuggler-001",
+        FactionID: "union",
+        Amount:    20,
+        Reason:    "Delivered guerilla weapons to Union contact",
+        Source:    "smuggler_delivery_quest",
+    })
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Printf("orders computed: %d  converged: %v\n",
+        result.OrdersComputed, result.Converged)
+
+    d, err := engine.GetDisposition(ctx, "smuggler-001", "union")
+    if err != nil {
+        panic(err)
+    }
+
+    fmt.Printf("union disposition: %d (%s)\n", d.Value, d.Tier.Name)
+}
+
+// memoryStore is a minimal in-memory Store for getting started.
+// Replace with adapters/postgres for production use.
+type memoryStore struct {
+    mu           sync.Mutex
+    dispositions map[string]faction.StoredDisposition
+    history      []faction.DispositionRecord
+}
+
+func newMemoryStore() *memoryStore {
+    return &memoryStore{dispositions: make(map[string]faction.StoredDisposition)}
+}
+
+func (s *memoryStore) key(e faction.EntityID, f faction.FactionID) string {
+    return string(e) + "/" + string(f)
+}
+
+func (s *memoryStore) GetDisposition(_ context.Context, e faction.EntityID, f faction.FactionID) (faction.StoredDisposition, error) {
+    s.mu.Lock(); defer s.mu.Unlock()
+    return s.dispositions[s.key(e, f)], nil
+}
+
+func (s *memoryStore) SetDisposition(_ context.Context, e faction.EntityID, f faction.FactionID, v int64) error {
+    s.mu.Lock(); defer s.mu.Unlock()
+    s.dispositions[s.key(e, f)] = faction.StoredDisposition{FactionID: f, Value: v, UpdatedAt: time.Now()}
+    return nil
+}
+
+func (s *memoryStore) GetAllDispositions(_ context.Context, e faction.EntityID) ([]faction.StoredDisposition, error) {
+    s.mu.Lock(); defer s.mu.Unlock()
+    prefix := string(e) + "/"
+    var out []faction.StoredDisposition
+    for k, v := range s.dispositions {
+        if len(k) > len(prefix) && k[:len(prefix)] == prefix {
+            out = append(out, v)
+        }
+    }
+    return out, nil
+}
+
+func (s *memoryStore) GetDispositionHistory(_ context.Context, _ faction.EntityID, _ faction.FactionID, limit int) ([]faction.DispositionRecord, error) {
+    s.mu.Lock(); defer s.mu.Unlock()
+    if limit > len(s.history) { limit = len(s.history) }
+    return s.history[len(s.history)-limit:], nil
+}
+
+func (s *memoryStore) RecordDispositionChange(_ context.Context, r faction.DispositionRecord) error {
+    s.mu.Lock(); defer s.mu.Unlock()
+    s.history = append(s.history, r)
+    return nil
+}
 ```
 
 ## Tiers
