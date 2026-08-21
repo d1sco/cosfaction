@@ -7,8 +7,8 @@ import (
 	"sort"
 	"time"
 
-	"github.com/d1sco/cosfaction/cosfaction/internal/graph"
-	"github.com/d1sco/cosfaction/cosfaction/internal/taylor"
+	"github.com/d1sco/cosfaction/internal/graph"
+	"github.com/d1sco/cosfaction/internal/taylor"
 )
 
 // Config defines the complete configuration for a faction engine instance.

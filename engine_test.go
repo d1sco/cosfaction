@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	faction "github.com/d1sco/cosfaction/cosfaction"
+	faction "github.com/d1sco/cosfaction"
 )
 
 // ── Test fixtures ─────────────────────────────────────────────────────────────

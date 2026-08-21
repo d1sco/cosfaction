@@ -4,7 +4,7 @@ import (
 	"math"
 	"testing"
 
-	"github.com/d1sco/cosfaction/cosfaction/internal/taylor"
+	"github.com/d1sco/cosfaction/internal/taylor"
 )
 
 // mockGraph implements taylor.Graph for testing.
