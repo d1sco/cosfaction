@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	faction "github.com/cosfaction/cosfaction"
-	natsadapter "github.com/cosfaction/cosfaction/adapters/nats"
+	faction "github.com/d1sco/cosfaction"
+	natsadapter "github.com/d1sco/cosfaction/adapters/nats"
 	"github.com/nats-io/nats.go"
 )
 
@@ -181,23 +181,23 @@ func TestPublisher_SubjectRouting(t *testing.T) {
 	nc := requireNATS(t)
 
 	tests := []struct {
-		cfg            natsadapter.Config
-		eventType      faction.EventType
+		cfg             natsadapter.Config
+		eventType       faction.EventType
 		expectedSubject string
 	}{
 		{
-			cfg:            natsadapter.Config{},
-			eventType:      faction.EventDispositionChanged,
+			cfg:             natsadapter.Config{},
+			eventType:       faction.EventDispositionChanged,
 			expectedSubject: "faction.events.disposition.changed",
 		},
 		{
-			cfg:            natsadapter.Config{},
-			eventType:      faction.EventTierCrossed,
+			cfg:             natsadapter.Config{},
+			eventType:       faction.EventTierCrossed,
 			expectedSubject: "faction.events.disposition.tier.crossed",
 		},
 		{
-			cfg:            natsadapter.Config{SubjectPrefix: "mygame.faction"},
-			eventType:      faction.EventDispositionChanged,
+			cfg:             natsadapter.Config{SubjectPrefix: "mygame.faction"},
+			eventType:       faction.EventDispositionChanged,
 			expectedSubject: "mygame.faction.disposition.changed",
 		},
 	}

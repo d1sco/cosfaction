@@ -30,7 +30,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cosfaction/cosfaction"
+	faction "github.com/d1sco/cosfaction"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )

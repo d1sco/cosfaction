@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	faction "github.com/cosfaction/cosfaction"
-	postgres "github.com/cosfaction/cosfaction/adapters/postgres"
+	faction "github.com/d1sco/cosfaction"
+	postgres "github.com/d1sco/cosfaction/adapters/postgres"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 

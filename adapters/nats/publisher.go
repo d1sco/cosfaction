@@ -50,7 +50,7 @@ import (
 	"fmt"
 	"strings"
 
-	faction "github.com/cosfaction/cosfaction"
+	faction "github.com/d1sco/cosfaction"
 	"github.com/nats-io/nats.go"
 )
 

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	faction "github.com/cosfaction/cosfaction"
-	redisadapter "github.com/cosfaction/cosfaction/adapters/redis"
+	faction "github.com/d1sco/cosfaction"
+	redisadapter "github.com/d1sco/cosfaction/adapters/redis"
 	"github.com/redis/go-redis/v9"
 )
 

@@ -40,7 +40,7 @@ import (
 	"strings"
 	"time"
 
-	faction "github.com/cosfaction/cosfaction"
+	faction "github.com/d1sco/cosfaction"
 	"github.com/redis/go-redis/v9"
 )
 
