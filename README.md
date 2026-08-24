@@ -4,6 +4,9 @@ Faction disposition engine for multiplayer games.
 
 `cosfaction` models multi-axis faction relationships as a weighted directed graph and uses **Higher-Order Taylor Expansion** to propagate disposition changes across competing factions with mathematically guaranteed convergence.
 
+Cosfaction builds around  **all of your factions in order from most to least important, to any player**, 1 to N factions, and cosfaction returns the scale of that actions political ripple across all factions.
+
+
 ## Why not just store a reputation integer?
 
 A reputation integer tells you how much a faction likes a player.
@@ -41,139 +44,6 @@ The delta is first normalized against the full disposition range to produce a di
 
 ```
 T_n(f) = (δ_n^n / n!) × Σ R(f₀,g₁) × R(g₁,g₂) × ... × R(g_{n-1}, f) × range
-```
-
-Where:
-- `δ_n = delta / range` is the normalized delta
-- `R(a,b)` is the influence weight of the relationship from faction `a` to faction `b`
-- `range` is the full disposition scale span derived from your tier configuration
-- `n!` is factorial damping
-
-Normalization ensures `|δ_n| < 1`, so `δ_n^n` shrinks geometrically with order. Combined with factorial damping this produces **double-guaranteed convergence**: two independent mechanisms both drive higher order terms toward zero.
-
-This has a meaningful game design consequence. Routine actions (small delta relative to range) produce negligible higher order effects. Major events (large delta relative to range) produce genuine political ripples across the entire faction graph. The mathematics encode political significance automatically.
-
-
-## Quick start
-
-```bash
-go get github.com/d1sco/cosfaction@v0.1.1
-```
-
-```go
-package main
-
-import (
-    "context"
-    "fmt"
-    "sync"
-    "time"
-
-    faction "github.com/d1sco/cosfaction"
-)
-
-func main() {
-    ctx := context.Background()
-
-    // Build tiers without calculating boundaries manually.
-    // Add or remove tier names — boundaries recalculate automatically.
-    tiers, err := faction.EvenTiers(
-        -10000, // dispositionMin
-        10000,  // dispositionMax
-        "Outlawed", "Wanted", "Suspected", "Neutral", "Trusted", "Celebrated",
-    )
-    if err != nil {
-        panic(err)
-    }
-
-    engine, err := faction.New(faction.Config{
-        Factions: []faction.Faction{
-            {ID: "iar",   Name: "Interstellar Authority Republic", Type: faction.FactionTypeGoverning},
-            {ID: "union", Name: "The Union",                       Type: faction.FactionTypeResistance},
-        },
-        Tiers: tiers,
-        Relations: []faction.Relation{
-            {FactionA: "iar",   FactionB: "union", Influence: -0.8},
-            {FactionA: "union", FactionB: "iar",   Influence: -0.8},
-        },
-        Store: newMemoryStore(), // swap for adapters/postgres in production
-    })
-    if err != nil {
-        panic(err)
-    }
-
-    result, err := engine.ApplyDelta(ctx, faction.Delta{
-        EntityID:  "smuggler-001",
-        FactionID: "union",
-        Amount:    20,
-        Reason:    "Delivered guerilla weapons to Union contact",
-        Source:    "smuggler_delivery_quest",
-    })
-    if err != nil {
-        panic(err)
-    }
-
-    fmt.Printf("orders computed: %d  converged: %v\n",
-        result.OrdersComputed, result.Converged)
-
-    d, err := engine.GetDisposition(ctx, "smuggler-001", "union")
-    if err != nil {
-        panic(err)
-    }
-
-    fmt.Printf("union disposition: %d (%s)\n", d.Value, d.Tier.Name)
-}
-
-// memoryStore is a minimal in-memory Store for getting started.
-// Replace with adapters/postgres for production use.
-type memoryStore struct {
-    mu           sync.Mutex
-    dispositions map[string]faction.StoredDisposition
-    history      []faction.DispositionRecord
-}
-
-func newMemoryStore() *memoryStore {
-    return &memoryStore{dispositions: make(map[string]faction.StoredDisposition)}
-}
-
-func (s *memoryStore) key(e faction.EntityID, f faction.FactionID) string {
-    return string(e) + "/" + string(f)
-}
-
-func (s *memoryStore) GetDisposition(_ context.Context, e faction.EntityID, f faction.FactionID) (faction.StoredDisposition, error) {
-    s.mu.Lock(); defer s.mu.Unlock()
-    return s.dispositions[s.key(e, f)], nil
-}
-
-func (s *memoryStore) SetDisposition(_ context.Context, e faction.EntityID, f faction.FactionID, v int64) error {
-    s.mu.Lock(); defer s.mu.Unlock()
-    s.dispositions[s.key(e, f)] = faction.StoredDisposition{FactionID: f, Value: v, UpdatedAt: time.Now()}
-    return nil
-}
-
-func (s *memoryStore) GetAllDispositions(_ context.Context, e faction.EntityID) ([]faction.StoredDisposition, error) {
-    s.mu.Lock(); defer s.mu.Unlock()
-    prefix := string(e) + "/"
-    var out []faction.StoredDisposition
-    for k, v := range s.dispositions {
-        if len(k) > len(prefix) && k[:len(prefix)] == prefix {
-            out = append(out, v)
-        }
-    }
-    return out, nil
-}
-
-func (s *memoryStore) GetDispositionHistory(_ context.Context, _ faction.EntityID, _ faction.FactionID, limit int) ([]faction.DispositionRecord, error) {
-    s.mu.Lock(); defer s.mu.Unlock()
-    if limit > len(s.history) { limit = len(s.history) }
-    return s.history[len(s.history)-limit:], nil
-}
-
-func (s *memoryStore) RecordDispositionChange(_ context.Context, r faction.DispositionRecord) error {
-    s.mu.Lock(); defer s.mu.Unlock()
-    s.history = append(s.history, r)
-    return nil
-}
 ```
 
 ## Tiers
