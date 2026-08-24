@@ -12,24 +12,6 @@ A reputation integer tells you how much a faction likes a player.
 
 When a Smuggler defies an IAR inspector, the Union notices. When a Bounty Hunter delivers a Union operative to the IAR, the Union treats it as a betrayal. These effects emerge automatically from the faction relationship graph. No special casing. No hardcoded faction logic.
 
-## How it works
-
-The delta is first normalized against the full disposition range to produce a dimensionless value `δ_n ∈ (-1, 1)`. The nth order term for faction `f` is then:
-
-```
-T_n(f) = (δ_n^n / n!) × Σ R(f₀,g₁) × R(g₁,g₂) × ... × R(g_{n-1}, f) × range
-```
-
-Where:
-- `δ_n = delta / range` is the normalized delta
-- `R(a,b)` is the influence weight of the relationship from faction `a` to faction `b`
-- `range` is the full disposition scale span derived from your tier configuration
-- `n!` is factorial damping
-
-Normalization ensures `|δ_n| < 1`, so `δ_n^n` shrinks geometrically with order. Combined with factorial damping this produces **double-guaranteed convergence**: two independent mechanisms both drive higher order terms toward zero.
-
-This has a meaningful game design consequence. Routine actions (small delta relative to range) produce negligible higher order effects. Major events (large delta relative to range) produce genuine political ripples across the entire faction graph. The mathematics encode political significance automatically.
-
 ## Definitions
 
 These terms have precise meanings in cosfaction that map directly to game design concepts.
@@ -51,6 +33,27 @@ These terms have precise meanings in cosfaction that map directly to game design
 **Convergence** — The mathematical guarantee that propagation always terminates with finite total effect. Two mechanisms enforce this simultaneously: normalized delta raised to the nth power shrinks geometrically, and factorial damping (n!) grows faster than any polynomial. A disposition delta of any magnitude will always produce a bounded total effect across the graph.
 
 **Decay** — The gradual movement of disposition toward a target value over real time when no new deltas are applied. Decay is evaluated lazily on read rather than by a background process — the engine computes elapsed time since the last write and applies the rate at the moment of access. A player cannot freeze their standing in a favorable state by logging out.
+
+
+## How it works
+
+The delta is first normalized against the full disposition range to produce a dimensionless value `δ_n ∈ (-1, 1)`. The nth order term for faction `f` is then:
+
+```
+T_n(f) = (δ_n^n / n!) × Σ R(f₀,g₁) × R(g₁,g₂) × ... × R(g_{n-1}, f) × range
+```
+
+Where:
+- `δ_n = delta / range` is the normalized delta
+- `R(a,b)` is the influence weight of the relationship from faction `a` to faction `b`
+- `range` is the full disposition scale span derived from your tier configuration
+- `n!` is factorial damping
+
+Normalization ensures `|δ_n| < 1`, so `δ_n^n` shrinks geometrically with order. Combined with factorial damping this produces **double-guaranteed convergence**: two independent mechanisms both drive higher order terms toward zero.
+
+This has a meaningful game design consequence. Routine actions (small delta relative to range) produce negligible higher order effects. Major events (large delta relative to range) produce genuine political ripples across the entire faction graph. The mathematics encode political significance automatically.
+
+
 ## Quick start
 
 ```bash
